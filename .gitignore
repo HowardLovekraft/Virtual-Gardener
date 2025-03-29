@@ -5,3 +5,13 @@ New-Plant-Diseases-Dataset(Augmented).zip
 
 # Ultralytics files
 train13/
+runs/
+
+# Environment files
+*.env
+venv/
+.venv/
+
+# Python files
+__pycache__
+
