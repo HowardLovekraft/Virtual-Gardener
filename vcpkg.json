@@ -1,0 +1,12 @@
+{
+  "dependencies": [
+    "fmt",
+    "tgbot-cpp",
+    {
+      "name": "curl",
+      "features": [
+        "ssl"
+      ]
+    }
+  ]
+}
