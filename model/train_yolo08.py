@@ -13,5 +13,5 @@ metrics = model.val()
 print(metrics.top5)
 
 # Экспорт модели
-weights_path = model.export(format='onnx', device=0)
+weights_path = model.export(format='onnx', device=DEVICE)
 move(weights_path, '/data/model.onnx')

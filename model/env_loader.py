@@ -34,6 +34,16 @@ if PATH_TO_YAML is None:
 YAML_FILE: Final[Path] = Path(PATH_TO_YAML)
 
 
+# Загрузка переменной с файлом конфигурации модели
+YAML_PATH_VAR_NAME: Final[str] = 'MODEL_YAML'
+PATH_TO_YAML = getenv(YAML_PATH_VAR_NAME)
+if PATH_TO_YAML is None:
+    raise EnvironmentError(
+        f"Path to config in {YAML_PATH_VAR_NAME} variable is not initialized.\nCheck your .env file."
+    )
+YAML_FILE: Final[Path] = Path(PATH_TO_YAML)
+
+
 # Загрузка переменной с файлом весов модели
 MODEL_PATH_VAR_NAME: Final[str] = 'PRETRAINED_MODEL'
 PATH_TO_MODEL = getenv(MODEL_PATH_VAR_NAME)
@@ -43,6 +53,14 @@ if PATH_TO_MODEL is None:
     )
 WEIGHTS_PATH: Final[Path] = Path(PATH_TO_MODEL)
 
+# Загрузка переменной с файлом весов модели
+YOLO11_YAML_PATH_VAR_NAME: Final[str] = 'YOLO11_YAML'
+PATH_TO_YAML_YOLO11 = getenv(YOLO11_YAML_PATH_VAR_NAME)
+if PATH_TO_YAML_YOLO11 is None:
+    raise EnvironmentError(
+        f"Path to config in '{YOLO11_YAML_PATH_VAR_NAME}' variable is not initialized.\nCheck your .env file."
+    )
+YOLO11_YAML: Final[Path] = Path(PATH_TO_YAML_YOLO11)
 
 # Загрузка устройства, на котором будет работать модель - CPU или GPU(CUDA)
 DEVICE: Final[str] = 'cuda' if cuda.is_available() else 'cpu'
