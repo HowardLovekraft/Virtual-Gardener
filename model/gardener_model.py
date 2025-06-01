@@ -1,11 +1,11 @@
+import json
+from datetime import datetime
 from os import makedirs
 from pathlib import Path
 from typing import TypedDict
 from ultralytics import YOLO
-import numpy as np
-import cv2
 
-from .env_loader import DEVICE, WEIGHTS_PATH
+from model.env_loader import DEVICE, WEIGHTS_PATH
 
 
 class GardenerResponse(TypedDict):
@@ -16,7 +16,7 @@ class VirtualGardener:
     """
     Класс, описывающий интерфейс взаимодействия с моделью Виртуального Садовника.
 
-    :param path_to_save: Путь до директории, в которой будут сохраняться
+    :param path_to_save: Путь до директории, в которой будут сохраняться 
     предсказания модели.
     """
     def __init__(self, path_to_save: str) -> None:
@@ -26,28 +26,26 @@ class VirtualGardener:
         # Создает директорию для предиктов, если её нет
         makedirs(path_to_save, exist_ok=True)
 
-    def predict(self, image_data: bytes, image_size: int = 256) -> str:
+    def predict(self, path_to_image: str | Path, image_size: int = 256) -> Path:
         """
-        Предсказывает болезнь растения по фотографии листвы и возвращает название класса.
+        Предсказывает болезнь растения по фотографии листвы и сохраняет ответ в `.json`.
 
-        :param image_data: Байты файла фотографии листвы.
+        :param path_to_image: Путь до файла фотографии листвы.
 
         :param image_size: Размер входного изображения. По умолчанию - 256*256 пикселей.
 
-        :return prediction: Название предсказанного класса болезни растения.
+        :return json_path: Путь до JSON-файла, содержащего предсказанный класс болезни растения.
+        Название файла - время обращения к модели.
         """
-        # Преобразуем байты изображения в формат, понятный OpenCV и Ultralytics
-        nparr = np.frombuffer(image_data, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        dt = str(hash(path_to_image))
+        results = self.model.predict(source=path_to_image, 
+                                     device=DEVICE, 
+                                     imgsz=image_size)
+        prediction = self.class_names[int(results[0].probs.top1)]
+        response: GardenerResponse = {"class_name": prediction}
 
-        results = self.model.predict(source=img,
-                                        device=DEVICE,
-                                        imgsz=image_size,
-                                        verbose=False) # Отключаем verbose для чистоты вывода
+        json_path = self.save_dir / (dt + '.json')
+        with open(json_path, mode='w', encoding='utf-8') as json_response:
+            json.dump(response, json_response)
+        return json_path
 
-        if results and results[0].probs is not None:
-            top1_index = results[0].probs.top1
-            prediction = self.class_names[int(top1_index)]
-            return prediction
-        else:
-            return "Не удалось распознать класс" # Или другое сообщение об ошибке

@@ -6,7 +6,7 @@ from typing import Final
 
 
 # Загрузка файла с переменными окружения
-PATH_TO_ENV: Final[str] = 'AImodel/venv.env'
+PATH_TO_ENV: Final[str] = './venv.env'
 env_is_loaded = load_dotenv(PATH_TO_ENV)
 if not env_is_loaded:
     raise EnvironmentError(
