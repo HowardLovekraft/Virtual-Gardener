@@ -11,13 +11,6 @@ runs/
 *.env
 venv/
 .venv/
-ai_sadovnik_venv/
-build/
 
 # Python files
-__pycache__/
-
-# Jupyter files
-.ipynb_checkpoints/
-.jupyter/
-
+__pycache__

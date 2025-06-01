@@ -1,0 +1,57 @@
+FROM ubuntu:noble
+
+USER root
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        cmake \
+        g++ \
+        git \
+        libssl-dev \
+        libcurl4-openssl-dev \
+        make \
+        libfmt-dev \
+        libboost-system-dev \
+        ca-certificates \
+        zlib1g-dev \
+        adduser \
+        passwd && \
+    rm -rf /var/lib/apt/lists/*
+USER appuser
+
+ARG UID=1001
+ARG GID=1001
+
+USER root
+RUN echo "appuser:x:${GID}:" >> /etc/group && \
+    echo "appuser:x:${UID}:${GID}::/home/appuser:/bin/bash" >> /etc/passwd && \
+    mkdir -p /home/appuser && \
+    chown -R ${UID}:${GID} /home/appuser && \
+    chmod 755 /home/appuser
+
+USER appuser
+
+WORKDIR /app
+
+USER root
+RUN git clone https://github.com/nlohmann/json.git /tmp/json_install && \
+    cd /tmp/json_install && \
+    mkdir build && \
+    cd build && \
+    cmake .. -DCMAKE_INSTALL_PREFIX=/usr && \
+    make install && \
+    rm -rf /tmp/json_install
+USER appuser
+
+USER root
+RUN GIT_TERMINAL_PROMPT=0 git clone https://github.com/reo7sp/tgbot-cpp.git /app/TgBot-cpp && \
+    cd /app/TgBot-cpp && \
+    mkdir build && \
+    cd build && \
+    cmake .. && \
+    make && \
+    make install
+USER appuser
+
+COPY --chown=appuser:appuser . /app
+
+CMD ["/app/cpp_bot/build/your_bot_executable"]
