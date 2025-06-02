@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   py_server:
     build:
@@ -10,7 +8,10 @@ services:
     env_file:
       - ./.env
     environment:
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - DATASET_DIR=/app/model/dataset
+      - MODEL_YAML=/app/model/YOLO_files/yolov8-cls.yaml
+      - PRETRAINED_MODEL=/app/model/YOLO_files/trained_models/v0.1/best.pt
+      - SERVER_URL=http://py_server:8000/predict
 
   cpp_bot:
     build:

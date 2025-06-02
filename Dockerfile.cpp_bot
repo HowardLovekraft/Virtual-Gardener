@@ -52,6 +52,17 @@ RUN GIT_TERMINAL_PROMPT=0 git clone https://github.com/reo7sp/tgbot-cpp.git /app
     make install
 USER appuser
 
-COPY --chown=appuser:appuser . /app
+USER appuser
+WORKDIR /app
 
-CMD ["/app/cpp_bot/build/your_bot_executable"]
+COPY --chown=appuser:appuser ./cpp_bot /app/cpp_bot
+
+USER root
+RUN cd /app/cpp_bot && \
+    mkdir -p build && \
+    cd build && \
+    cmake .. && \
+    make
+USER appuser
+
+CMD ["/app/cpp_bot/build/AI_Sadovnik"]

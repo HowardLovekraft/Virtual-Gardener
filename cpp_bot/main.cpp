@@ -19,8 +19,10 @@ size_t write_callback(char *contents, size_t size, size_t nmemb, std::string *us
 }
 
 int main() {
-    std::string token(getenv("TOKEN"));
-    const std::string serverUrl = "http://127.0.0.1:8000/predict";
+    const char* token_env = getenv("TELEGRAM_BOT_TOKEN");
+    std::string token(token_env);
+    const char* server_url_env = getenv("SERVER_URL");
+    const std::string serverUrl(server_url_env);
 
     TgBot::Bot bot(token);
 
@@ -55,7 +57,7 @@ int main() {
     bot.getEvents().onCommand("start", [&bot, &startKeyboard](TgBot::Message::Ptr message) {
         bot.getApi().sendMessage(message->chat->id,
                                     "Привет, я бот, определяющий болезнь домашнего растения по фото",
-                                    false,
+                                    nullptr,
                                     0,
                                     startKeyboard);
     });
@@ -123,7 +125,7 @@ int main() {
                             try {
                                 auto jsonResponse = nlohmann::json::parse(readBuffer);
                                 std::string className = jsonResponse["class_name"].get<std::string>();
-                                bot.getApi().sendMessage(message->chat->id, "Предсказанный класс: " + className, false, 0, afterPhotoKeyboard);
+                                bot.getApi().sendMessage(message->chat->id, "Предсказанный класс: " + className, nullptr, 0, afterPhotoKeyboard);
                             } catch (const nlohmann::json::parse_error& e) {
                                 std::cerr << "Ошибка парсинга JSON: " << e.what() << std::endl;
                             }
