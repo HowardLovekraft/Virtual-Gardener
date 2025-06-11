@@ -3,6 +3,12 @@ model/dataset/
 New-Plant-Diseases-Dataset(Augmented)/
 New-Plant-Diseases-Dataset(Augmented).7z
 New-Plant-Diseases-Dataset(Augmented).zip
+papka/
+
+# ML files
+model/efficient_net_*
+metric_analysis/saves/
+weights/
 
 # Ultralytics files
 train13/
@@ -12,6 +18,7 @@ runs/
 *.env
 venv/
 .venv/
+uv.lock
 
 # Python files
 __pycache__/
