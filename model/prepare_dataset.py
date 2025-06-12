@@ -22,7 +22,7 @@ for split in splits:
 
 
 labels_numbers = {label: num for (num, label) in enumerate(classes)}
-with open(r'metric_analysis\labels_tags.json', 'w') as file:
+with open(Path('metric_analysis', 'labels_tags.json'), 'w') as file:
     json.dump(labels_numbers, file)
 
 for split in splits:
