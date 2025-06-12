@@ -12,6 +12,7 @@ from torchvision.io import decode_image
 
 from model.train_vit import vit_weights_path
 
+
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 

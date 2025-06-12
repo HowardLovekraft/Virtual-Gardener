@@ -1,4 +1,5 @@
 from datetime import datetime
+import json
 import os
 from pathlib import Path
 
@@ -10,6 +11,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 from env_loader import DATASET, DEVICE, vit_epoch_amount
 from vision_transformer.utils import DatasetSplit, WhoWeAreDataset
+
+
+vit_weights_path = None
+
 
 def main():
     def train_epoch(epoch_index, tb_writer):
@@ -23,7 +28,7 @@ def main():
             optimizer.zero_grad()
 
             # Make predictions for batch
-            outputs = eff_net(inputs)
+            outputs = model(inputs)
 
             # Compute the loss and gradients
             loss = loss_fn(outputs, labels)
@@ -50,7 +55,7 @@ def main():
                     vinputs = vinputs.to(DEVICE)
                     vlabels = vlabels.type(torch.LongTensor).to(DEVICE)
                     
-                    voutputs = eff_net(vinputs)
+                    voutputs = model(vinputs)
                     vloss = loss_fn(voutputs, vlabels)
                     running_vloss += vloss
         return running_vloss
@@ -67,12 +72,18 @@ def main():
     valid_set = WhoWeAreDataset(annotations_path, data_path, split=DatasetSplit.VALID)
     test_set = WhoWeAreDataset(annotations_path, data_path, split=DatasetSplit.TEST)
 
-    train_loader = DataLoader(train_set, batch_size=4, shuffle=True, num_workers=4)
-    valid_loader = DataLoader(valid_set, batch_size=4, shuffle=False, num_workers=4)
+    train_loader = DataLoader(train_set, batch_size=32, shuffle=True, num_workers=8)
+    valid_loader = DataLoader(valid_set, batch_size=32, shuffle=False, num_workers=8)
     test_loader = DataLoader(test_set, batch_size=4, shuffle=False)
 
+    with open(Path('metric_analysis', 'labels_tags.json'), 'r') as file:
+        labels_tags = json.load(file)
 
-    model = vit_b_32()
+
+    model = vit_b_32(
+        image_size=512,
+        num_classes=len(labels_tags)    
+    )
     model.to(DEVICE)
     loss_fn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters())
