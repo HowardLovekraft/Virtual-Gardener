@@ -11,7 +11,7 @@ from torch import cuda
 yolo_epoch_amount = 0
 effnet_epoch_amount = 0
 vit_epoch_amount = 0
-with open('.\\model\\train-config.toml', 'rb') as f:
+with open(Path('model', 'train-config.toml'), 'rb') as f:
     config = tomllib.load(f)
     yolo_epoch_amount = config['yolo_epoch_amount']
     effnet_epoch_amount = config['effnet_epoch_amount']
@@ -19,7 +19,7 @@ with open('.\\model\\train-config.toml', 'rb') as f:
 
 
 # Загрузка файла с переменными окружения
-PATH_TO_ENV: Final[str] = '.\\model\\venv.env'
+PATH_TO_ENV: Final[Path] = Path('model', 'venv.env')
 env_is_loaded = load_dotenv(PATH_TO_ENV)
 if not env_is_loaded:
     raise EnvironmentError(

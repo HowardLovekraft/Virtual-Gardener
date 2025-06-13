@@ -8,15 +8,15 @@ from pandas import read_csv
 import sklearn
 import sklearn.metrics
 import torch
+from torch.utils.data import DataLoader
 from torchvision.io import decode_image
-
-from model.train_vit import vit_weights_path
-
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 from model.env_loader import DATASET, DEVICE
+from model.train_vit import annotations_path, data_path, vit_weights_path, transform
+from model.train_vit import DatasetSplit, WhoWeAreDataset
 
 
 Label: TypeAlias = str
@@ -30,16 +30,17 @@ class Statistic(NamedTuple):
 
 
 def test_model_performance(model: Callable):
-    predictions = []
+    predictions: list[torch.types.Number] = []
+    expectations: list[int] = []
     with torch.no_grad():
-        for image in test_images:
-            result: torch.Tensor = model(decode_image(image).to(DEVICE).float().unsqueeze(0))
-            print(result.shape)
-            print('PREDICTED!')
-            break
-            predictions.append(result.to('cpu'))
+        for i, (inputs, labels) in enumerate(test_loader):
+            inputs = inputs.to(DEVICE)
+            outputs: torch.Tensor = model(inputs)
+            predictions.append(outputs.argmax().item())
+            expectations.append(labels.item())
 
-    stats = sklearn.metrics.classification_report(test_labels, predictions, 
+
+    stats = sklearn.metrics.classification_report(expectations, predictions, 
                                         labels=list(labels_tags.values()), 
                                         target_names=list(labels_tags.keys()), 
                                         digits=3, output_dict=False, zero_division='warn')
@@ -47,20 +48,18 @@ def test_model_performance(model: Callable):
     print(stats)
 
 
-YOLO8_WEIGHTS = Path('metric_analysis', 'weights', 'yolo8_50epochs.pt')
-YOLO11_WEIGHTS = Path('metric_analysis', 'weights', 'yolo11_50epochs.pt')
+# YOLO8_WEIGHTS = Path('metric_analysis', 'weights', 'yolo8_50epochs.pt')
+# YOLO11_WEIGHTS = Path('metric_analysis', 'weights', 'yolo11_50epochs.pt')
 
 path = Path(DATASET, 'annotations', 'test')
 labels_tags = None
 with open(Path('metric_analysis', 'labels_tags.json'), 'r') as file:
     labels_tags = json.load(file)
 
-test_set = read_csv(Path(path, 'annotations.csv'), delimiter=',')
-test_images = test_set.iloc[:, 0].tolist()
-test_labels = test_set.iloc[:, 1].tolist()
 
-# model_a = YOLO(YOLO8_WEIGHTS, task='classify')
-# model_b = YOLO(YOLO11_WEIGHTS, task='classify')
+test_set = WhoWeAreDataset(annotations_path, data_path, split=DatasetSplit.VALID, transform=transform)
+test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
+
 
 model_c = torch.jit.load(vit_weights_path)
 model_c.to(DEVICE)

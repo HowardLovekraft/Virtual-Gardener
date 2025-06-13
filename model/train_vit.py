@@ -2,33 +2,38 @@ from datetime import datetime
 import json
 import os
 from pathlib import Path
+import sys
 
 import numpy as np
 import torch
 from torchvision.models.vision_transformer import vit_b_32
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+import torchvision.transforms as transforms
 
-from env_loader import DATASET, DEVICE, vit_epoch_amount
-from vision_transformer.utils import DatasetSplit, WhoWeAreDataset
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
 
-
-vit_weights_path = None
+from model.env_loader import DATASET, DEVICE, vit_epoch_amount
+from model.vision_transformer.utils import DatasetSplit, WhoWeAreDataset
 
 
 def main():
+    global vit_weights_path, annotations_path, data_path
+    global transform
+
     def train_epoch(epoch_index, tb_writer):
         running_loss = 0.
         last_loss = 0.
 
         for i, (inputs, labels) in enumerate(train_loader):
-            inputs = inputs.to(DEVICE)
+            inputs: torch.Tensor = inputs.to(DEVICE)
             labels = labels.type(torch.LongTensor).to(DEVICE)
             # Zero gradients for batch
             optimizer.zero_grad()
 
             # Make predictions for batch
-            outputs = model(inputs)
+            outputs: torch.Tensor = model(inputs)
 
             # Compute the loss and gradients
             loss = loss_fn(outputs, labels)
@@ -48,17 +53,17 @@ def main():
 
         return last_loss
 
-    def validate_epoch() -> float:
+    def validate_epoch() -> tuple[float, int]:
         running_vloss = 0.0
         with torch.no_grad():
             for i, (vinputs, vlabels) in enumerate(valid_loader):
                     vinputs = vinputs.to(DEVICE)
                     vlabels = vlabels.type(torch.LongTensor).to(DEVICE)
-                    
                     voutputs = model(vinputs)
                     vloss = loss_fn(voutputs, vlabels)
                     running_vloss += vloss
-        return running_vloss
+        return running_vloss, len(valid_loader)
+
 
     CWD = os.getcwd()
     architecture_name = 'vit'
@@ -67,14 +72,16 @@ def main():
     dataset_path = Path(DATASET_ABS_PATH)
     data_path = Path(dataset_path, 'data')
     annotations_path = Path(dataset_path, 'annotations')
+    transform = transforms.Compose([
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
 
-    train_set = WhoWeAreDataset(annotations_path, data_path, split=DatasetSplit.TRAIN)
-    valid_set = WhoWeAreDataset(annotations_path, data_path, split=DatasetSplit.VALID)
-    test_set = WhoWeAreDataset(annotations_path, data_path, split=DatasetSplit.TEST)
+    train_set = WhoWeAreDataset(annotations_path, data_path, split=DatasetSplit.TRAIN, transform=transform)
+    valid_set = WhoWeAreDataset(annotations_path, data_path, split=DatasetSplit.VALID, transform=transform)
 
-    train_loader = DataLoader(train_set, batch_size=32, shuffle=True, num_workers=8)
-    valid_loader = DataLoader(valid_set, batch_size=32, shuffle=False, num_workers=8)
-    test_loader = DataLoader(test_set, batch_size=4, shuffle=False)
+    train_loader = DataLoader(train_set, batch_size=32, shuffle=True, num_workers=4)
+    valid_loader = DataLoader(valid_set, batch_size=32, shuffle=False, num_workers=4)
+    # test_loader = DataLoader(test_set, batch_size=4, shuffle=False)
 
     with open(Path('metric_analysis', 'labels_tags.json'), 'r') as file:
         labels_tags = json.load(file)
@@ -104,9 +111,9 @@ def main():
         
         model.eval()
         print('Train is done. Start validating...')
-        running_vloss = validate_epoch()
+        running_vloss, val_size = validate_epoch()
 
-        avg_vloss = running_vloss / (i+1)
+        avg_vloss = running_vloss / val_size
         print(f'LOSS train {avg_loss} valid {avg_vloss}')
 
         # Log the running loss averaged per batch
@@ -119,18 +126,14 @@ def main():
         # Track best performance, and save the model's state
         if avg_vloss < best_vloss:
             best_vloss = avg_vloss
-            model_path = Path(CWD, f'{architecture_name}_{timestamp}_{epoch_number}')
+            model_path = Path(CWD, 'runs', f'{architecture_name}_{timestamp}_{epoch_number}')
             torch.save(model.state_dict(), model_path)
 
         epoch_number += 1
 
-    vit_weights_path = Path('metric_analysis', 'weights', f'vit_b_32_{timestamp}')
+    vit_weights_path = Path(CWD, f'vit_b_32_{timestamp}.pt')
     model_scripted = torch.jit.script(model)
     model_scripted.save(vit_weights_path)
-
-    # Загрузка весов
-    # saved_model = EfficientNet()
-    # saved_model.load_state_dict(torch.load(model_path))
 
 
 if __name__ == '__main__':

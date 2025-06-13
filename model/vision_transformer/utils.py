@@ -35,11 +35,9 @@ class WhoWeAreDataset(Dataset):
 
         img_path = self.annotations.iloc[idx, 0]
         label = self.annotations.iloc[idx, 1]
-        image = decode_image(img_path).float()
+        image = decode_image(img_path).float() / 255.
         
         if self.transform:
             image = self.transform(image)
-
-        image /= 255.
 
         return image, label
