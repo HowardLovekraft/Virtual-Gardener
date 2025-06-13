@@ -10,12 +10,12 @@ import sklearn.metrics
 import torch
 from torch.utils.data import DataLoader
 from torchvision.io import decode_image
+import torchvision.transforms as transforms
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 from model.env_loader import DATASET, DEVICE
-from model.train_vit import annotations_path, data_path, vit_weights_path, transform
 from model.train_vit import DatasetSplit, WhoWeAreDataset
 
 
@@ -56,6 +56,15 @@ labels_tags = None
 with open(Path('metric_analysis', 'labels_tags.json'), 'r') as file:
     labels_tags = json.load(file)
 
+CWD = os.getcwd()
+DATASET_ABS_PATH = Path(CWD, DATASET)
+dataset_path = Path(DATASET_ABS_PATH)
+data_path = Path(dataset_path, 'data')
+annotations_path = Path(dataset_path, 'annotations')
+transform = transforms.Compose([
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+vit_weights_path = Path(CWD, f'vit_b_32_{timestamp}.pt')
 
 test_set = WhoWeAreDataset(annotations_path, data_path, split=DatasetSplit.VALID, transform=transform)
 test_loader = DataLoader(test_set, batch_size=1, shuffle=False)

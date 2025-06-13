@@ -81,7 +81,6 @@ def main():
 
     train_loader = DataLoader(train_set, batch_size=32, shuffle=True, num_workers=4)
     valid_loader = DataLoader(valid_set, batch_size=32, shuffle=False, num_workers=4)
-    # test_loader = DataLoader(test_set, batch_size=4, shuffle=False)
 
     with open(Path('metric_analysis', 'labels_tags.json'), 'r') as file:
         labels_tags = json.load(file)
