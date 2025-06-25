@@ -20,75 +20,75 @@ size_t write_callback(char *contents, size_t size, size_t nmemb, std::string *us
 
 int main() {
     const char* token_env = getenv("TELEGRAM_BOT_TOKEN");
+    if (token_env == nullptr) {
+        std::cerr << "Ошибка: переменная окружения TELEGRAM_BOT_TOKEN не установлена." << std::endl;
+        return 1;
+    }
     std::string token(token_env);
-    const char* server_url_env = getenv("SERVER_URL");
-    const std::string serverUrl(server_url_env);
 
+    const char* server_url_env = getenv("SERVER_URL");
+    if (server_url_env == nullptr) {
+        std::cerr << "Ошибка: переменная окружения SERVER_URL не установлена." << std::endl;
+        return 1;
+    }
+    const std::string serverUrl(server_url_env);
     TgBot::Bot bot(token);
 
     std::vector<TgBot::BotCommand::Ptr> commands;
     TgBot::BotCommand::Ptr commandStart(new TgBot::BotCommand);
     commandStart->command = "start";
-    commandStart->description = "запуск бота";
+    commandStart->description = "Начать работу с ботом";
     commands.push_back(commandStart);
     bot.getApi().setMyCommands(commands);
 
     TgBot::InlineKeyboardMarkup::Ptr startKeyboard(new TgBot::InlineKeyboardMarkup);
-    std::vector<TgBot::InlineKeyboardButton::Ptr> startKeyboardstr1;
-    TgBot::InlineKeyboardButton::Ptr send_photoButton(new TgBot::InlineKeyboardButton);
-    send_photoButton->text = "Отправить фото";
-    send_photoButton->callbackData = "send";
-    startKeyboardstr1.push_back(send_photoButton);
-    TgBot::InlineKeyboardButton::Ptr about_developersButton(new TgBot::InlineKeyboardButton);
-    about_developersButton->text = "О разработчиках";
-    about_developersButton->callbackData = "about";
-    startKeyboardstr1.push_back(about_developersButton);
-    startKeyboard->inlineKeyboard.push_back(startKeyboardstr1);
+    std::vector<TgBot::InlineKeyboardButton::Ptr> startKeyboardRow1;
+    TgBot::InlineKeyboardButton::Ptr identifyButton(new TgBot::InlineKeyboardButton);
+    identifyButton->text = "✅ Определить болезнь по фото";
+    identifyButton->callbackData = "identify_illness";
+    startKeyboardRow1.push_back(identifyButton);
+    startKeyboard->inlineKeyboard.push_back(startKeyboardRow1);
+
+    std::vector<TgBot::InlineKeyboardButton::Ptr> startKeyboardRow2;
+    TgBot::InlineKeyboardButton::Ptr aboutDevelopersButton(new TgBot::InlineKeyboardButton);
+    aboutDevelopersButton->text = "ℹ️ О разработчиках";
+    aboutDevelopersButton->callbackData = "about";
+    startKeyboardRow2.push_back(aboutDevelopersButton);
+    startKeyboard->inlineKeyboard.push_back(startKeyboardRow2);
 
     TgBot::InlineKeyboardMarkup::Ptr afterPhotoKeyboard(new TgBot::InlineKeyboardMarkup);
-    std::vector<TgBot::InlineKeyboardButton::Ptr> afterPhotoKeyboardstr1;
-    TgBot::InlineKeyboardButton::Ptr finish(new TgBot::InlineKeyboardButton);
-    finish->text = "Завершить";
-    finish->callbackData = "finish";
-    afterPhotoKeyboardstr1.push_back(finish);
-    afterPhotoKeyboardstr1.push_back(send_photoButton);
-    afterPhotoKeyboard->inlineKeyboard.push_back(afterPhotoKeyboardstr1);
+    std::vector<TgBot::InlineKeyboardButton::Ptr> afterPhotoKeyboardRow1;
+    afterPhotoKeyboardRow1.push_back(identifyButton);
+    afterPhotoKeyboard->inlineKeyboard.push_back(afterPhotoKeyboardRow1);
 
     bot.getEvents().onCommand("start", [&bot, &startKeyboard](TgBot::Message::Ptr message) {
-        bot.getApi().sendMessage(message->chat->id,
-                                    "Привет, я бот, определяющий болезнь домашнего растения по фото",
-                                    nullptr,
-                                    0,
-                                    startKeyboard);
+        std::string text = "Привет! 🌿\n\nЯ ваш личный помощник-садовод.\n\nОтправьте мне фотографию вашего растения, и я определю его болезнь и дам рекомендации по лечению.\n\nНажмите на кнопку ниже, чтобы начать.";
+        bot.getApi().sendMessage(message->chat->id, text, nullptr, 0, startKeyboard);
     });
 
-    bot.getEvents().onCallbackQuery([&bot, &startKeyboard, &afterPhotoKeyboard](TgBot::CallbackQuery::Ptr query){
-        if (query->data == "send"){
-            bot.getApi().sendMessage(query->message->chat->id, "Пожалуйста, отправьте фото.");
+    bot.getEvents().onCallbackQuery([&bot, &startKeyboard](TgBot::CallbackQuery::Ptr query) {
+        if (query->data == "identify_illness") {
+            bot.getApi().sendMessage(query->message->chat->id, "Теперь, пожалуйста, отправьте мне фотографию пораженного растения. Постарайтесь сделать снимок четким и при хорошем освещении.");
             waitingForPhoto[query->message->chat->id] = true;
-        }
-        else if (query->data == "about") {
+        } else if (query->data == "about") {
             bot.getApi().sendMessage(query->message->chat->id, "Бот разработан командой \"Кто. Мы\"");
         }
-        else if (query->data == "finish") {
-            waitingForPhoto.clear();
-            return;
-        }
     });
 
-    bot.getEvents().onAnyMessage([&bot, &afterPhotoKeyboard, &serverUrl](TgBot::Message::Ptr message){
-        if (StringTools::startsWith(message->text, "/start")) {
-            waitingForPhoto.clear();
+    bot.getEvents().onAnyMessage([&bot, &afterPhotoKeyboard, &serverUrl](TgBot::Message::Ptr message) {
+        if (message->text.length() > 0 && StringTools::startsWith(message->text, "/start")) {
             return;
         }
         long long int chatId = message->chat->id;
-        if (waitingForPhoto.count(chatId)){
-            if (!message->photo.empty()){
+        if (waitingForPhoto.count(chatId) && waitingForPhoto[chatId]) {
+            if (!message->photo.empty()) {
+                waitingForPhoto[chatId] = false;
+                
+                bot.getApi().sendMessage(chatId, "Фото получено, начинаю анализ... ⏳");
+
                 TgBot::PhotoSize::Ptr photo = message->photo.back();
                 TgBot::File::Ptr file = bot.getApi().getFile(photo->fileId);
-                std::string filePath = file->filePath;
-                std::string fileExtension = filePath.substr(filePath.find_last_of('.'));
-                std::string fileContent = bot.getApi().downloadFile(filePath);
+                std::string fileContent = bot.getApi().downloadFile(file->filePath);
 
                 CURL *curl;
                 CURLcode res;
@@ -97,70 +97,97 @@ int main() {
 
                 curl_global_init(CURL_GLOBAL_DEFAULT);
                 curl = curl_easy_init();
-                if(curl) {
-                    curl_easy_setopt(curl, CURLOPT_URL, serverUrl.c_str());
-                    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+                if (curl) {
+                    curl_mime *form = curl_mime_init(curl);
+                    curl_mimepart *field = curl_mime_addpart(form);
 
-                    curl_mime *form = NULL;
-                    curl_mimepart *field = NULL;
-                    form = curl_mime_init(curl);
-
-                    std::string fileName = "photo" + photo->fileId + fileExtension;
-
-                    field = curl_mime_addpart(form);
                     curl_mime_name(field, "image");
-                    curl_mime_filename(field, fileName.c_str());
-                    curl_mime_type(field, "image/jpeg");
+                    curl_mime_filename(field, "photo.jpg");
                     curl_mime_data(field, fileContent.data(), fileContent.size());
+
+                    curl_easy_setopt(curl, CURLOPT_URL, serverUrl.c_str());
                     curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
                     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
                     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+
                     res = curl_easy_perform(curl);
                     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+                    
                     std::cout << "HTTP код ответа: " << http_code << std::endl;
 
-                    if(res == CURLE_OK) {
+                    if (res == CURLE_OK && http_code == 200) {
                         std::cout << "Сервер ответил: " << readBuffer << std::endl;
-                        if (http_code == 200) {
-                            try {
-                                auto jsonResponse = nlohmann::json::parse(readBuffer);
-                                std::string className = jsonResponse["class_name"].get<std::string>();
-                                bot.getApi().sendMessage(message->chat->id, "Предсказанный класс: " + className, nullptr, 0, afterPhotoKeyboard);
-                            } catch (const nlohmann::json::parse_error& e) {
-                                std::cerr << "Ошибка парсинга JSON: " << e.what() << std::endl;
+                        try {
+                            auto jsonResponse = nlohmann::json::parse(readBuffer);
+                            std::string diseaseName = jsonResponse.value("disease_name", "Неизвестно");
+                            std::stringstream response_ss;
+                            if (diseaseName == "Болезнь не распознана") {
+                                response_ss << "🔍 *Результат анализа: Болезнь не распознана* 😞\n\n";
+                                response_ss << "К сожалению, мне не удалось определить болезнь по этой фотографии. "
+                                            << "Пожалуйста, попробуйте сделать снимок более четким, при хорошем освещении, "
+                                            << "сфокусировавшись на пораженной части растения. Иногда это помогает!\n\n";
+                                response_ss << "❗️ *Важная памятка:*\n";
+                                response_ss << "_" << jsonResponse.value("memo", "Информация отсутствует.") << "_\n";
+                            } else {
+                                response_ss << "🔍 *Результат анализа: " << diseaseName << "*\n\n";
+
+                                if (jsonResponse.contains("treatment") && !jsonResponse["treatment"].empty()) {
+                                    response_ss << "💊 *Рекомендации по лечению:*\n";
+                                    for (const auto& step : jsonResponse["treatment"]) {
+                                        response_ss << "• " << step.get<std::string>() << "\n";
+                                    }
+                                    response_ss << "\n";
+                                }
+                                if (jsonResponse.contains("prevention") && !jsonResponse["prevention"].empty()) {
+                                    response_ss << "🛡️ *Профилактика:*\n";
+                                    for (const auto& step : jsonResponse["prevention"]) {
+                                        response_ss << "• " << step.get<std::string>() << "\n";
+                                    }
+                                    response_ss << "\n";
+                                }
+                                if (jsonResponse.contains("memo") && !jsonResponse["memo"].empty()) {
+                                    response_ss << "❗️ *Важная памятка:*\n";
+                                    response_ss << "_" << jsonResponse["memo"].get<std::string>() << "_\n";
+                                }
                             }
-                        } else {
-                            std::cerr << "Сервер вернул ошибку (код " << http_code << "): " << readBuffer << std::endl;
+                            bot.getApi().sendMessage(chatId, response_ss.str(), nullptr, 0, afterPhotoKeyboard, "Markdown");
+                        } catch (const nlohmann::json::parse_error& e) {
+                            std::cerr << "Ошибка парсинга JSON: " << e.what() << std::endl;
+                            bot.getApi().sendMessage(chatId, "Упс! Произошла внутренняя ошибка. Не удалось обработать ответ от сервера. Попробуйте позже.");
                         }
                     } else {
-                        std::cerr << "Ошибка отправки запроса на сервер: " << curl_easy_strerror(res) << std::endl;
+                        std::cerr << "Сервер вернул ошибку (код " << http_code << "): " << readBuffer << std::endl;
+                        bot.getApi().sendMessage(chatId, "Упс! Сервер анализа изображений сейчас недоступен. Пожалуйста, попробуйте позже.");
                     }
+
                     curl_mime_free(form);
                     curl_easy_cleanup(curl);
                 }
                 curl_global_cleanup();
-            } else{
-                bot.getApi().sendMessage(message->chat->id, "не тот тип файла, отправьте фото");
+            } else {
+                bot.getApi().sendMessage(chatId, "Кажется, это не фотография. Пожалуйста, отправьте именно фото.");
             }
         } else {
-            bot.getApi().sendMessage(message->chat->id, "это не сработает, нажимай на предложенные кнопки или запусти бота заново");
+            if(message->text.length() > 0) {
+                bot.getApi().sendMessage(chatId, "Я не знаю, как на это ответить. Чтобы начать, используйте команду /start или нажмите на кнопку \"Определить болезнь по фото\".");
+            }
         }
     });
     signal(SIGINT, [](int s) {
-        std::cout << "SIGINT got\n";
+        std::cout << "SIGINT получено, бот останавливается.\n";
         exit(0);
     });
 
     try {
-        printf("Bot username: %s\n", bot.getApi().getMe()->username.c_str());
+        printf("Бот запущен. Имя пользователя: %s\n", bot.getApi().getMe()->username.c_str());
         bot.getApi().deleteWebhook();
 
         TgBot::TgLongPoll longPoll(bot);
         while (true) {
-            std::cout << "Long poll started\n";
             longPoll.start();
         }
     } catch (std::exception& e) {
-        std::cout << "error:\n" << e.what();
+        std::cerr << "Критическая ошибка: " << e.what() << std::endl;
     }
+    return 0;
 }
